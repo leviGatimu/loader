@@ -144,7 +144,9 @@ def fetch_info():
         'skip_download': True, 
         'noplaylist': True,
         'check_formats': False,
-        'nocheckcertificate': True
+        'nocheckcertificate': True,
+        'format': 'best',
+        'ignoreerrors': True
     }
     
     if cp:
