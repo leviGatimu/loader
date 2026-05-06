@@ -4,6 +4,7 @@ import uuid
 import threading
 import re
 import subprocess
+import traceback
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yt_dlp
@@ -31,6 +32,16 @@ logger = logging.getLogger(__name__)
 task_status = {}
 task_progress = {}
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(f"Unhandled Exception: {str(e)}")
+    logger.error(traceback.format_exc())
+    return jsonify({
+        "error": "Server Error",
+        "message": str(e),
+        "traceback": traceback.format_exc() if os.environ.get("DEBUG") else "Check logs"
+    }), 500
+
 def check_ffmpeg():
     try:
         subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
@@ -39,6 +50,19 @@ def check_ffmpeg():
         return False
 
 ffmpeg_available = check_ffmpeg()
+
+def get_cookie_path():
+    # Check multiple possible locations for cookies.txt
+    paths = [
+        os.path.join(BASE_DIR, "cookies.txt"),
+        os.path.join(os.path.dirname(BASE_DIR), "cookies.txt"),
+        "/app/cookies.txt",
+        "/app/backend/cookies.txt"
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            return p
+    return None
 
 def download_worker(task_id, url, format_id, title):
     safe_title = "".join([c for c in title if c.isalnum() or c in (' ', '-', '_')]).strip()    
@@ -64,13 +88,12 @@ def download_worker(task_id, url, format_id, title):
         'quiet': True,
         'no_warnings': True,
         'progress_hooks': [progress_hook],
-        'check_formats': False
+        'check_formats': False,
+        'nocheckcertificate': True
     }
     
-    # Try to use cookies.txt if the user uploaded it
-    cookie_path = os.path.join(BASE_DIR, "cookies.txt")
-    if os.path.exists(cookie_path):
-        ydl_opts['cookiefile'] = cookie_path
+    cp = get_cookie_path()
+    if cp: ydl_opts['cookiefile'] = cp
 
     if '+' in format_id:
         ydl_opts['merge_output_format'] = 'mp4'
@@ -100,7 +123,13 @@ def download_worker(task_id, url, format_id, title):
 
 @app.route('/', methods=['GET'])
 def home():
-    return jsonify({"status": "online", "ffmpeg": ffmpeg_available})
+    cp = get_cookie_path()
+    return jsonify({
+        "status": "online", 
+        "ffmpeg": ffmpeg_available,
+        "cookies_found": cp is not None,
+        "cookie_location": cp if cp else "None"
+    })
 
 @app.route('/fetch', methods=['POST'])
 def fetch_info():
@@ -108,27 +137,21 @@ def fetch_info():
     url = data.get('url')
     if not url: return jsonify({'error': 'URL is required'}), 400
 
-    cookie_path = os.path.join(BASE_DIR, "cookies.txt")
-    
+    cp = get_cookie_path()
     ydl_opts = {
         'quiet': True, 
         'no_warnings': True, 
         'skip_download': True, 
         'noplaylist': True,
         'check_formats': False,
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        }
+        'nocheckcertificate': True
     }
     
-    if os.path.exists(cookie_path):
-        logger.info(f"Found cookies.txt. Testing readability...")
-        try:
-            with open(cookie_path, 'r') as f:
-                logger.info(f"Cookie file first line: {f.readline()[:30]}...")
-            ydl_opts['cookiefile'] = cookie_path
-        except Exception as e:
-            logger.error(f"Cookie file error: {e}")
+    if cp:
+        logger.info(f"Using cookies from: {cp}")
+        ydl_opts['cookiefile'] = cp
+    else:
+        logger.warning("No cookies.txt found in any expected location.")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -155,7 +178,7 @@ def fetch_info():
                 acodec = f.get('acodec')
                 height = f.get('height')
                 vcodec = f.get('vcodec')
-                is_video = vcodec != 'none'
+                is_video = vcodec != 'none' and vcodec is not None
                 
                 if not is_video: continue
                 
@@ -209,15 +232,14 @@ def fetch_info():
             })      
     except Exception as e: 
         error_msg = str(e)
+        logger.error(f"Extraction failed: {error_msg}")
         if "Sign in to confirm you’re not a bot" in error_msg:
             return jsonify({
-                'error': "YouTube blocked the server (Bot Detection). Please upload cookies.txt to the backend folder.",
-                'details': "Visit the project's help section for instructions on cookies.txt."
+                'error': "Bot Detection: YouTube is blocking this request. Ensure cookies.txt is valid and Netscape formatted.",
+                'details': error_msg
             }), 403
         
-        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-        clean_error = ansi_escape.sub('', error_msg)
-        return jsonify({'error': f"Extraction failed: {clean_error}"}), 500
+        return jsonify({'error': f"Extraction failed: {error_msg}"}), 500
 
 @app.route('/download', methods=['POST'])
 def start_download():
