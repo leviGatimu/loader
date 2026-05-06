@@ -145,7 +145,15 @@ def fetch_info():
         'noplaylist': True,
         'check_formats': False,
         'nocheckcertificate': True,
-        'format': 'best',
+        'format': 'bestvideo+bestaudio/best',
+        'ignoreerrors': True,
+        'extract_flat': 'in_playlist',
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Sec-Fetch-Mode': 'navigate'
+        }
+    }
         'ignoreerrors': True
     }
     
