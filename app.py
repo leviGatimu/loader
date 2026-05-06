@@ -64,6 +64,7 @@ def download_worker(task_id, url, format_id, title):
         'quiet': True,
         'no_warnings': True,
         'progress_hooks': [progress_hook],
+        'check_formats': False
     }
     
     # Try to use cookies.txt if the user uploaded it
@@ -114,14 +115,20 @@ def fetch_info():
         'no_warnings': True, 
         'skip_download': True, 
         'noplaylist': True,
+        'check_formats': False,
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         }
     }
     
     if os.path.exists(cookie_path):
-        logger.info("Using cookies.txt for authentication")
-        ydl_opts['cookiefile'] = cookie_path
+        logger.info(f"Found cookies.txt. Testing readability...")
+        try:
+            with open(cookie_path, 'r') as f:
+                logger.info(f"Cookie file first line: {f.readline()[:30]}...")
+            ydl_opts['cookiefile'] = cookie_path
+        except Exception as e:
+            logger.error(f"Cookie file error: {e}")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
