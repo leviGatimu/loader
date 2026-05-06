@@ -154,8 +154,6 @@ def fetch_info():
             'Sec-Fetch-Mode': 'navigate'
         }
     }
-        'ignoreerrors': True
-    }
     
     if cp:
         logger.info(f"Using cookies from: {cp}")
