@@ -8,7 +8,17 @@ from flask_cors import CORS
 import yt_dlp
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["https://loader-frontend-ipa4dg5y7-levigatimus-projects.vercel.app", "http://localhost:3000"]}})
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://loader-frontend-ipa4dg5y7-levigatimus-projects.vercel.app",
+            "http://localhost:3000",
+            "*"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Use a local downloads folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
