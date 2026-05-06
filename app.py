@@ -20,11 +20,14 @@ CORS(app, resources={
     }
 })
 
-# Use a local downloads folder
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DOWNLOAD_FOLDER = os.path.join(BASE_DIR, "downloads")
+# Use /tmp/downloads for cloud compatibility (Railway)
+DOWNLOAD_FOLDER = "/tmp/downloads"
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
+
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 task_status = {}
 task_progress = {}
