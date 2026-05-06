@@ -106,12 +106,27 @@ def fetch_info():
     url = data.get('url')
     if not url: return jsonify({'error': 'URL is required'}), 400
 
+    # Try to use cookies.txt if the user uploaded it
+    cookie_path = os.path.join(BASE_DIR, "cookies.txt")
+    
     ydl_opts = {
         'quiet': True, 
         'no_warnings': True, 
         'skip_download': True, 
-        'noplaylist': True
+        'noplaylist': True,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
+            'Sec-Fetch-Mode': 'navigate',
+        }
     }
+    
+    if os.path.exists(cookie_path):
+        logger.info("Using cookies.txt for authentication")
+        ydl_opts['cookiefile'] = cookie_path
+    else:
+        logger.warning("No cookies.txt found. YouTube might block this request.")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
