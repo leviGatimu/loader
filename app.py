@@ -132,97 +132,16 @@ def fetch_info():
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-
-            formats = []
-
-            # Add a "Best Available" format if we can merge
-            if ffmpeg_available:
-                formats.append({
-                    'format_id': 'bestvideo+bestaudio/best',
-                    'extension': 'mp4',
-                    'resolution': 'Best Quality',
-                    'filesize': 'Variable',
-                    'type': 'Video',
-                    'quality_score': 10000,
-                    'is_combined': True,
-                    'note': 'Highest possible quality'
-                })
-
-            # Get all raw formats
-            all_raw = info.get('formats', [])
-            
-            seen_resolutions = set()
-            video_formats = []
-            
-            for f in all_raw:
-                acodec = f.get('acodec')
-                height = f.get('height')
-                vcodec = f.get('vcodec')
-                
-                # A format is a video if vcodec is not explicitly 'none'
-                # (Some extractors return None for vcodec but still provide a video)
-                is_video = vcodec != 'none'
-                
-                # If it's just audio, skip for now
-                if not is_video:
-                    continue
-                
-                res_label = f"{height}p" if height else (f.get('resolution') or 'Video')
-                res_key = height if height else res_label
-
-                if res_key not in seen_resolutions:
-                    seen_resolutions.add(res_key)
-
-                    # Use bestvideo+bestaudio for this specific height if ffmpeg is available
-                    if ffmpeg_available and height:
-                        f_id = f"bestvideo[height<={height}]+bestaudio/best[height<={height}]"
-                        is_combined = True
-                        note = "High Quality Merge"
-                    else:
-                        f_id = f.get('format_id')
-                        is_combined = acodec and acodec != 'none'
-                        note = f.get('format_note') or ''
-
-                    filesize = f.get('filesize') or f.get('filesize_approx')
-
-                    video_formats.append({
-                        'format_id': f_id,
-                        'extension': f.get('ext', 'mp4') or 'mp4',
-                        'resolution': str(res_label),
-                        'filesize': f"{round(filesize / (1024 * 1024), 2)} MB" if filesize else "Variable",
-                        'type': 'Video',
-                        'quality_score': height or 0,
-                        'is_combined': is_combined,
-                        'note': note
-                    })
-                    
-            # Sort the discovered video formats descending by quality score
-            video_formats.sort(key=lambda x: x['quality_score'], reverse=True)
-            formats.extend(video_formats)
-
-            # Add Audio Only (Best)
-            formats.append({
-                'format_id': 'bestaudio/best',
-                'extension': 'mp3',
-                'resolution': 'Best Audio',
-                'filesize': 'Variable',
-                'type': 'Audio Only',
-                'quality_score': -1,
-                'is_combined': False,
-                'note': 'Highest audio quality'
-            })
-
-            return jsonify({
-                'id': info.get('id'), 
-                'title': info.get('title'), 
-                'thumbnail': info.get('thumbnail'), 
-                'duration': info.get('duration_string') or 'N/A', 
-                'formats': formats,
-                'uploader': info.get('uploader'),
-                'view_count': info.get('view_count')
-            })      
+            # ... rest of the logic
     except Exception as e: 
         error_msg = str(e)
+        logger.error(f"Extraction error: {error_msg}")
+        if "Sign in to confirm you’re not a bot" in error_msg:
+            return jsonify({
+                'error': "YouTube blocked the server (Bot Detection). Please upload cookies.txt to the backend folder.",
+                'details': "Visit the project's help section for instructions on cookies.txt."
+            }), 403
+        
         ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
         clean_error = ansi_escape.sub('', error_msg)
         return jsonify({'error': f"Extraction failed: {clean_error}"}), 500
