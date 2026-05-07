@@ -164,6 +164,9 @@ def fetch_info():
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
+            if info is None:
+                return jsonify({'error': 'Unable to access video. It may be private, age-restricted, or a dead link.'}), 403
+                
             formats = []
 
             if ffmpeg_available:
