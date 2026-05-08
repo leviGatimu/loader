@@ -145,14 +145,8 @@ def fetch_info():
         'noplaylist': True,
         'check_formats': False,
         'nocheckcertificate': True,
-        'format': 'bestvideo+bestaudio/best',
-        'ignoreerrors': True,
-        'extract_flat': 'in_playlist',
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Sec-Fetch-Mode': 'navigate'
-        }
+        'ignoreerrors': False,
+        'js_runtimes': {'node': {}},
     }
     
     if cp:
@@ -165,7 +159,7 @@ def fetch_info():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             if info is None:
-                return jsonify({'error': 'Unable to access video. It may be private, age-restricted, or a dead link.'}), 403
+                return jsonify({'error': 'Video information could not be retrieved. It may be private or unavailable.'}), 403
                 
             formats = []
 
