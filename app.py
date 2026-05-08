@@ -89,7 +89,13 @@ def download_worker(task_id, url, format_id, title):
         'no_warnings': True,
         'progress_hooks': [progress_hook],
         'check_formats': False,
-        'nocheckcertificate': True
+        'nocheckcertificate': True,
+        'js_runtimes': {'node': {}},
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android_vr', 'android', 'ios', 'web']
+            }
+        }
     }
     
     cp = get_cookie_path()
@@ -147,6 +153,11 @@ def fetch_info():
         'nocheckcertificate': True,
         'ignoreerrors': False,
         'js_runtimes': {'node': {}},
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android_vr', 'android', 'ios', 'web']
+            }
+        }
     }
     
     if cp:
